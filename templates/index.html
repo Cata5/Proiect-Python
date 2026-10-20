@@ -5,9 +5,61 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CinemaWorld</title>
+    <link rel="stylesheet" href="/static/style.css?v=1.1">
 </head>
 
 <body>
+
+    <main class="cinema-container">
+
+        <header class="page-header">
+            <div class="header-content">
+                <span class="eyebrow">YOUR CINEMA EXPERIENCE</span>
+                <h1>Now Showing</h1>
+                <p>Discover movies and choose your showtime.</p>
+            </div>
+
+            <div class="movie-count">
+                <span class="count-label">IN THEATERS</span>
+                <span class="count-value">NOW PLAYING</span>
+            </div>
+        </header>
+
+        <section class="movie-grid" id="movie-grid" aria-label="Movies currently showing">
+            {% for movie in movies %}
+            <article class="movie-card">
+                <div class="poster-container">
+                    <img class="movie-poster" src="{{ movie.poster_url }}" alt="{{ movie.title }}" loading="lazy">
+                    <span class="rating">{{ movie.rating }}</span>
+                </div>
+                <div class="movie-info">
+                    <h2 class="movie-title">{{ movie.title }}</h2>
+                    <p class="movie-overview">{{ movie.overview }}</p>
+                    <div class="movie-meta">
+                        <span class="movie-year">{{ movie.year }}</span>
+                        <span class="meta-separator">•</span>
+                        <span class="movie-runtime">2h 15m</span>
+                    </div>
+                    <div class="genres">
+                        {% for genre in movie.genres %}
+                        <span class="genre">{{ genre }}</span>
+                        {% endfor %}
+                    </div>
+                    <p class="showtime-label">Choose a showtime</p>
+                    <div class="showtimes">
+                        {% for time in movie.showtimes %}
+                        <button type="button">{{ time }}</button>
+                        {% endfor %}
+                    </div>
+                    <button class="book-button" type="button" disabled>
+                        SELECT A SHOWTIME
+                    </button>
+                </div>
+            </article>
+            {% endfor %}
+        </section>
+
+    </main>
 
 </body>
 
