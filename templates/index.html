@@ -60,7 +60,25 @@
         </section>
 
     </main>
+    <script>
 
+        const movieCards = document.querySelectorAll('.movie-card');
+        movieCards.forEach(card => {
+            const showtimeButtons = card.querySelectorAll('.showtimes button');
+            const bookButton = card.querySelector('.book-button');
+            showtimeButtons.forEach(btn => {
+                btn.addEventListener('click', function () {
+                    // 1. Scoatem clasa 'active' doar de pe butoanele din ACEST card
+                    showtimeButtons.forEach(b => b.classList.remove('active'));
+                    // 2. Punem clasa 'active' pe butonul apăsat    
+                    this.classList.add('active');
+                    // 3. Deblocăm butonul de rezervare și actualizăm textul
+                    bookButton.disabled = false;
+                    bookButton.textContent = `BOOK FOR ${this.textContent.trim()}`;
+                });
+            });
+        });
+    </script>
 </body>
 
 </html>

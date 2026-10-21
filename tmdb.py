@@ -2,6 +2,8 @@ import os
 import random
 import httpx
 from dotenv import load_dotenv
+import json
+import random
 #citim cheia din .env
 load_dotenv()
 
@@ -11,9 +13,15 @@ IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
 
 # Mock showtimes to pick from for our cinema UI
 SHOWTIME_OPTIONS = ["13:30", "15:45", "18:00", "20:15", "22:30"]
-
 _GENRE_CACHE = {}
 _MOVIES_CACHE = []
+
+try:
+   with open("database.json","r",encoding="utf-8") as f:
+    _MOVIES_CACHE = json.load(f)
+except (FileNotFoundError, json.JSONDecodeError) as e:
+    print(f"Cache miss or empty database.json: {e}")
+    _MOVIES_CACHE = []
 
 def get_auth_headers_and_params():
     # Dacă e token lung (v4 Bearer)
@@ -53,12 +61,11 @@ async def fetch_random_movies(count: int = 10) -> list:
         print("Warning: TMDB_API_KEY is not set in .env")
         return []
 
-    random_page = random.randint(1, 5)
     #params for fetching a TMDB page and the movies on it
     headers,params = get_auth_headers_and_params()
     params["language"] = "en-US"
-    params["page"] = random_page
-    params["sort_by"] = "popularity.desc"
+    params["page"] = 1
+    params["release_date"] = 2026
     params["vote_count.gte"] = 100
 
     #creating a HTTP async client that it closes automatically when we finish using it.
@@ -100,6 +107,12 @@ async def fetch_random_movies(count: int = 10) -> list:
                 "year": year,
                 "genres": movie_genres,
                 "showtimes": showtimes,
+                "price": f"{random.randint(50,80)} + 'Ron'"
             })
         _MOVIES_CACHE = formatted_movies
+        try:
+            with open("database.json","w",encoding="utf-8") as f:
+                json.dump(_MOVIES_CACHE ,f,indent=4,ensure_ascii=False)
+        except Exception as e:
+            print(f"Eroare la salvarea bazei de date: {e}")
         return _MOVIES_CACHE
