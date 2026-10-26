@@ -81,7 +81,7 @@ async def fetch_random_movies(count: int = 10) -> list:
         
         # Only take movies that have a poster image
         valid_movies = [m for m in results if m.get("poster_path")]
-        # Sample 10 random movies (or whatever count is requested)
+        # Sample N random movies
         sampled = random.sample(valid_movies, min(count, len(valid_movies)))
         # Format movie dict for the template
         formatted_movies = []
