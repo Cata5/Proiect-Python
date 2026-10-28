@@ -116,3 +116,47 @@ async def fetch_random_movies(count: int = 10) -> list:
         except Exception as e:
             print(f"Eroare la salvarea bazei de date: {e}")
         return _MOVIES_CACHE
+
+
+
+async def search_movies_by_title(title: str, count: int = 5) -> list:
+    """Search for movies on TMDB by title (useful for finding liked movies or model recommendations)."""
+    if not TMDB_API_KEY or not title.strip():
+        return []
+
+    headers, params = get_auth_headers_and_params()
+    params["language"] = "en-US"
+    params["query"] = title.strip()
+    params["page"] = 1
+
+    async with httpx.AsyncClient() as client:
+        genres_map = await get_genres(client)
+        try:
+            response = await client.get(f"{BASE_URL}/search/movie", params=params, headers=headers)
+            if response.status_code != 200:
+                return []
+            results = response.json().get("results", [])
+            valid_movies = [m for m in results if m.get("poster_path")][:count]
+
+            movies = []
+            for movie in valid_movies:
+                movie_genres = [
+                    genres_map.get(gid) for gid in movie.get("genre_ids", [])[:2]
+                    if gid in genres_map
+                ]
+                release_date = movie.get("release_date", "")
+                year = release_date.split("-")[0] if release_date else "N/A"
+                movies.append({
+                    "id": movie.get("id"),
+                    "title": movie.get("title"),
+                    "overview": movie.get("overview"),
+                    "poster_url": f"{IMAGE_BASE_URL}{movie.get('poster_path')}",
+                    "rating": f"★ {movie.get('vote_average', 0):.1f}",
+                    "year": year,
+                    "genres": movie_genres,
+                })
+            return movies
+        except Exception as e:
+            print(f"Error searching movies by title: {e}")
+            return []
+

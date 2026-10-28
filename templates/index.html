@@ -20,10 +20,60 @@
             </div>
 
             <div class="movie-count">
-                <span class="count-label">IN THEATERS</span>
-                <span class="count-value">NOW PLAYING</span>
+                <button type="button" class="recommend-trigger-btn" id="open-recommend-btn">
+                    Recommend Movies
+                </button>
+                <div style="margin-top: 8px;">
+                    <span class="count-label">IN THEATERS</span>
+                    <span class="count-value">NOW PLAYING</span>
+                </div>
             </div>
         </header>
+
+        <!-- Recommendation Modal -->
+        <div class="modal-backdrop" id="recommend-modal" aria-hidden="true">
+            <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-heading">
+                <div class="modal-header">
+                    <div>
+                        <h2 class="modal-title" id="modal-heading">Movie Recommender</h2>
+                        <p class="modal-subtitle">Pick one or more genres to discover top rated movies.</p>
+                    </div>
+                    <button type="button" class="modal-close-btn" id="close-recommend-btn"
+                        aria-label="Close dialog">&times;</button>
+                </div>
+
+                <!-- Liked Movies / Search by Title Section -->
+                <div class="modal-search-section">
+                    <label class="modal-section-label" for="movie-search-input">Movies You Liked</label>
+                    <div class="search-input-wrapper">
+                        <input type="text" id="movie-search-input" class="movie-search-input"
+                            placeholder="Search by title (e.g. Interstellar, Beekeeper)...">
+                        <button type="button" class="btn-subtle" id="search-title-btn">Search</button>
+                    </div>
+                    <div class="title-search-results" id="title-search-results"></div>
+                    <div class="liked-movies-chips" id="liked-movies-chips"></div>
+                </div>
+
+                <div class="modal-section-divider"></div>
+
+                <div>
+                    <label class="modal-section-label">Preferred Genres</label>
+                    <div class="genre-tags-container" id="genres-container">
+                        {% for gid, gname in genres.items() %}
+                        <button type="button" class="genre-tag-btn" data-genre-id="{{ gid }}">
+                            {{ gname }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <button type="button" class="search-recommend-btn" id="find-movies-btn">
+                    Find Recommendations
+                </button>
+
+                <div class="recommendations-result" id="recommendations-list"></div>
+            </div>
+        </div>
 
         <section class="movie-grid" id="movie-grid" aria-label="Movies currently showing">
             {% for movie in movies %}
@@ -77,6 +127,161 @@
                     bookButton.textContent = `BOOK FOR ${this.textContent.trim()}`;
                 });
             });
+        });
+
+        // Modal controls
+        const modal = document.getElementById('recommend-modal');
+        const openBtn = document.getElementById('open-recommend-btn');
+        const closeBtn = document.getElementById('close-recommend-btn');
+        const genreBtns = document.querySelectorAll('.genre-tag-btn');
+        const findMoviesBtn = document.getElementById('find-movies-btn');
+        const resultsContainer = document.getElementById('recommendations-list');
+
+        const searchInput = document.getElementById('movie-search-input');
+        const searchTitleBtn = document.getElementById('search-title-btn');
+        const titleSearchResults = document.getElementById('title-search-results');
+        const likedChipsContainer = document.getElementById('liked-movies-chips');
+
+        const likedMovies = new Set();
+
+        openBtn.addEventListener('click', () => modal.classList.add('open'));
+        closeBtn.addEventListener('click', () => modal.classList.remove('open'));
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.remove('open');
+        });
+
+        // Search for movies to like by title
+        async function searchTitle() {
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            titleSearchResults.innerHTML = '<div style="padding: 10px; color: var(--muted); font-size: 12px;">Searching...</div>';
+            titleSearchResults.style.display = 'block';
+
+            try {
+                const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const data = await res.json();
+                if (!data.movies || data.movies.length === 0) {
+                    titleSearchResults.innerHTML = '<div style="padding: 10px; color: var(--muted); font-size: 12px;">No matching movie found.</div>';
+                    return;
+                }
+
+                titleSearchResults.innerHTML = data.movies.map(m => `
+                    <div class="search-item" data-title="${m.title.replace(/"/g, '&quot;')}">
+                        <img src="${m.poster_url}" alt="${m.title}">
+                        <div class="search-item-info">
+                            <span class="search-item-title">${m.title}</span>
+                            <span class="search-item-year">${m.year} • ${m.rating}</span>
+                        </div>
+                        <button type="button" class="btn-add-liked">+ Add</button>
+                    </div>
+                `).join('');
+
+                titleSearchResults.querySelectorAll('.search-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const title = item.dataset.title;
+                        addLikedMovie(title);
+                        titleSearchResults.style.display = 'none';
+                        searchInput.value = '';
+                    });
+                });
+            } catch (err) {
+                titleSearchResults.innerHTML = '<div style="padding: 10px; color: var(--accent); font-size: 12px;">Error searching movies.</div>';
+            }
+        }
+
+        searchTitleBtn.addEventListener('click', searchTitle);
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                searchTitle();
+            }
+        });
+
+        function addLikedMovie(title) {
+            if (likedMovies.has(title)) return;
+            likedMovies.add(title);
+            renderLikedChips();
+        }
+
+        function removeLikedMovie(title) {
+            likedMovies.delete(title);
+            renderLikedChips();
+        }
+
+        function renderLikedChips() {
+            if (likedMovies.size === 0) {
+                likedChipsContainer.innerHTML = '';
+                return;
+            }
+            likedChipsContainer.innerHTML = Array.from(likedMovies).map(title => `
+                <span class="liked-chip">
+                    ${title}
+                    <button type="button" class="chip-remove" onclick="removeLikedMovie('${title.replace(/'/g, "\\'")}')">&times;</button>
+                </span>
+            `).join('');
+        }
+        window.removeLikedMovie = removeLikedMovie;
+
+        // Toggle selected genres
+        genreBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.classList.toggle('active');
+            });
+        });
+
+        // Get AI movie recommendations using MovieRecommendSystem (Unsloth)
+        findMoviesBtn.addEventListener('click', async () => {
+            const activeGenres = Array.from(document.querySelectorAll('.genre-tag-btn.active'))
+                .map(btn => btn.textContent.trim());
+            const likedList = Array.from(likedMovies);
+
+            findMoviesBtn.disabled = true;
+            findMoviesBtn.textContent = 'Generating AI Recommendations...';
+            resultsContainer.innerHTML = '<p style="color: var(--muted); grid-column: 1/-1;">Thinking for the best matches...</p>';
+
+            try {
+                const res = await fetch('/api/ai-recommend', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        genres: activeGenres,
+                        liked_movies: likedList
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.error) {
+                    resultsContainer.innerHTML = `<p style="color: var(--accent); grid-column: 1/-1;">AI Error: ${data.error}</p>`;
+                    return;
+                }
+
+                if (!data.movies || data.movies.length === 0) {
+                    resultsContainer.innerHTML = '<p style="color: var(--muted); grid-column: 1/-1;">No movies found for these recommendations.</p>';
+                    return;
+                }
+
+                // Render the 3 recommended movie cards with poster and reason
+                resultsContainer.innerHTML = data.movies.map(m => `
+                    <div class="rec-card">
+                        <img src="${m.poster_url}" alt="${m.title}" loading="lazy">
+                        <div class="rec-card-body">
+                            <h4 class="rec-title">${m.title}</h4>
+                            <div class="rec-meta">
+                                <span>${m.year || ''}</span>
+                                <span class="rec-rating">${m.rating || ''}</span>
+                            </div>
+                            ${m.reason ? `<p style="font-size: 11px; color: var(--muted); margin: 6px 0 0 0; line-height: 1.4;">${m.reason}</p>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                resultsContainer.innerHTML = '<p style="color: var(--accent); grid-column: 1/-1;">Failed to connect to recommendation server.</p>';
+            } finally {
+                findMoviesBtn.disabled = false;
+                findMoviesBtn.textContent = 'Find Recommendations';
+            }
         });
     </script>
 </body>
